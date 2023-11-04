@@ -1,8 +1,15 @@
 <script>
     let count = 0
 
-    const dec = () => count--
-    const inc = () => count++
+    function dec() {
+        count--
+        $render()
+    }
+
+    function inc() {
+        count++
+        $render()
+    }
 </script>
 
 <div class="flex space-x-4">
