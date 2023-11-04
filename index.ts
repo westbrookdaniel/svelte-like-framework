@@ -187,13 +187,13 @@ export default function component(target, $props = {}) {
   );
 }
 
-const file = readFileSync("./example.hits", "utf8");
+const file = readFileSync("./example", "utf8");
 const out = compile(file);
 const html = `<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>hits</title>
+    <title>App</title>
   <script type="module">
     ${out}
     component(document.body).mount()

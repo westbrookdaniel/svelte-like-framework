@@ -1,5 +1,5 @@
 {
-  "name": "hits",
+  "name": "svelte-like-framework",
   "module": "index.ts",
   "type": "module",
   "scripts": {

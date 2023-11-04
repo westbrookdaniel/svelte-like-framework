@@ -1,4 +1,4 @@
-# hits
+# Svelte like Framework
 
 To install dependencies:
 
