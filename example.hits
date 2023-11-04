@@ -1,5 +1,7 @@
 <script>
-    let count = 0
+    const { name } = $props
+
+    $state.count = 0
 
     function dec() {
         count--
@@ -14,6 +16,6 @@
 
 <div class="flex space-x-4">
     <button @click={dec} class="example">-</button>
-    <p>Count: {count}</p>
+    <p>{name}'s Count: {count}</p>
     <button @click={inc}>+</button>
 </div>

@@ -92,7 +92,9 @@ function compile(file: string) {
   });
 
   return transpiler.transformSync(
-    `export default function component({ $render, ...props }) {${js}return \`${html}\`;};`,
+    `export default function component($props) {
+        const $state = {};
+        ${js}return \`${html}\`;};`,
   );
 }
 
