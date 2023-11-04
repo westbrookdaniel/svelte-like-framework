@@ -3,25 +3,44 @@ import { parseFragment, serialize } from "parse5";
 import { parse } from "acorn";
 import { generate } from "astring";
 import { randomBytes } from "crypto";
-// Might need this for reactivity later?
-// import { walk } from "estree-walker";
 
 function compile(file: string) {
   const doc = parseFragment(file);
 
-  const scripts: string[] = [];
+  let imports = "";
+  let declarations = "";
+  let scripts = "";
   const eventHandlers: string[] = [];
 
   // Parse script tag
-  let ast: any;
+  // TODO: This is a bit messy
   const i: any = doc.childNodes.findIndex((node) => node.nodeName === "script");
   if (i !== -1) {
     const node: any = doc.childNodes[i]!;
-    ast = parse(node.childNodes[0].value, {
+    const ast = parse(node.childNodes[0].value, {
       ecmaVersion: "latest",
       sourceType: "module",
     });
-    scripts.push(generate(ast));
+
+    const newAst: any = { ...ast, body: [] };
+    const newDeclarations: any = { ...ast, body: [] };
+    const newImports: any = { ...ast, body: [] };
+
+    for (let i = 0; i < ast.body.length; i++) {
+      const n = ast.body[i];
+      if (["VariableDeclaration", "FunctionDeclaration"].includes(n.type)) {
+        // Pull out declarations
+        newDeclarations.body.push(n);
+      } else if (n.type === "ImportDeclaration") {
+        // Pull out imports
+        newImports.body.push(n);
+      } else {
+        newAst.body.push(n);
+      }
+    }
+    scripts = generate(newAst);
+    declarations = generate(newDeclarations);
+    imports = generate(newImports);
     doc.childNodes.splice(i, 1);
   }
 
@@ -51,24 +70,25 @@ function compile(file: string) {
         });
 
         if (nodeEventHandlers.length > 0) {
-          const id = randomBytes(4).toString("hex");
+          const id = "_" + randomBytes(4).toString("hex");
+
           const classAttr = node.attrs.find((attr: any) => attr.name);
           if (classAttr) {
-            classAttr.value += " " + id;
+            classAttr.value += ` ${id}`;
             classAttr.value = classAttr.value.trim();
           } else {
             node.attrs.push({ name: "class", value: id });
           }
 
           eventHandlers.push(
-            `const _${id} = document.querySelector('${
+            `const ${id} = document.querySelector('${
               node.tagName
             }.${id}');${nodeEventHandlers
               .map((attr) => {
                 const ev = attr.name.slice(1);
                 const fn = attr.value.slice(1, -1);
                 // TODO: Put a render lifecycle hook here
-                return `function ${ev}_${id}(...args) { ${fn}(...args) };_${id}.addEventListener('${ev}', ${fn});`;
+                return `function ${ev}${id}(...args) { ${fn}(...args) };${id}.addEventListener('${ev}', ${fn});`;
               })
               .join("")}`,
           );
@@ -81,7 +101,7 @@ function compile(file: string) {
 
   traverse(doc);
 
-  let js = (scripts.join("\n") + "\n" + eventHandlers.join("\n")).trim();
+  let js = (scripts + "\n" + eventHandlers.join("\n")).trim();
   if (!js.endsWith(";")) js += ";";
 
   const html = serialize(doc).trim();
@@ -89,16 +109,55 @@ function compile(file: string) {
   const transpiler = new Bun.Transpiler({
     loader: "js",
     minifyWhitespace: true,
+    target: "browser",
+    allowBunRuntime: false,
   });
 
   return transpiler.transformSync(
-    `export default function component($props) {
-        const $state = {};
-        ${js}return \`${html}\`;};`,
+    `${imports}
+export default function component(target, $props = {}) {
+        const $state = new Proxy({}, {
+            set: (t, key, value) => {
+                t[key] = value;
+                target.innerHTML = $render();
+                return true;
+            }
+        });
+        ${declarations}
+        function $render() { return \`${html}\` };
+        target.innerHTML = $render()
+        return {
+            mount: () => { ${js} },
+        };
+     };`,
   );
 }
 
 const file = readFileSync("./example.hits", "utf8");
 const out = compile(file);
+const html = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>hits</title>
+  </head>
+  <body>
+  </body>
+  <script type="module">
+    ${out}
+    component(document.body, { name: "Dan" }).mount()
+  </script>
+</html>`;
 
 console.log(out);
+
+const server = Bun.serve({
+  port: 3000,
+  fetch() {
+    return new Response(html, {
+      headers: { "Content-Type": "text/html" },
+    });
+  },
+});
+
+console.log(`Listening on localhost: ${server.port}`);
