@@ -194,16 +194,14 @@ const html = `<!DOCTYPE html>
   <head>
     <meta charset="utf-8" />
     <title>hits</title>
+    <script type="module">
+      ${out}
+      component(document.body).mount()
+    </script>
   </head>
   <body>
   </body>
-  <script type="module">
-    ${out}
-    component(document.body, { name: "Dan" }).mount()
-  </script>
 </html>`;
-
-console.log(out);
 
 const server = Bun.serve({
   port: 3000,

@@ -1,5 +1,6 @@
 <script>
-    const { name } = $props
+    const { name = 'Dan' } = $props
+    // ^ Imports don't work yet so this is kinda pointless
 
     const $state = {
         count: 0
