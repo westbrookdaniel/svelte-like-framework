@@ -119,7 +119,7 @@ export default function component(target, $props = {}) {
         const $state = new Proxy({}, {
             set: (t, key, value) => {
                 t[key] = value;
-                target.innerHTML = $render();
+                // TODO: Update the changed value in the DOM
                 return true;
             }
         });

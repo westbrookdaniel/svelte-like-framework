@@ -2,6 +2,8 @@
     const { name } = $props
     console.log($props, name)
 
+    // TODO: Change from $state.count = 0 to const $count = 0
+    // so it gets hoisted and then we transform to $state.count
     $state.count = 0
 
     function dec() {
