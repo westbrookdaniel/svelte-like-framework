@@ -194,10 +194,10 @@ const html = `<!DOCTYPE html>
   <head>
     <meta charset="utf-8" />
     <title>hits</title>
-    <script type="module">
-      ${out}
-      component(document.body).mount()
-    </script>
+  <script type="module">
+    ${out}
+    component(document.body).mount()
+  </script>
   </head>
   <body>
   </body>
