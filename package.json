@@ -1,0 +1,19 @@
+{
+  "name": "hits",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run index.ts"
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "acorn": "^8.11.2",
+    "estree-walker": "^3.0.3",
+    "parse5": "^7.1.2"
+  }
+}

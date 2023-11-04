@@ -1,0 +1,10 @@
+<script>
+    let count = 0
+    const dec = () => count--
+</script>
+
+<div class="flex space-x-4">
+    <button @click={dec}>-</button>
+    <p>Count: {count}</p>
+    <button @click={() => count++}>+</button>
+</div>
