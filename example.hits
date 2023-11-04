@@ -1,10 +1,12 @@
 <script>
     let count = 0
+
     const dec = () => count--
+    const inc = () => count++
 </script>
 
 <div class="flex space-x-4">
-    <button @click={dec}>-</button>
+    <button @click={dec} class="example">-</button>
     <p>Count: {count}</p>
-    <button @click={() => count++}>+</button>
+    <button @click={inc}>+</button>
 </div>
