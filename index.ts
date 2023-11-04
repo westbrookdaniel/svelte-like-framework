@@ -10,6 +10,7 @@ function compile(file: string) {
   let imports = "";
   let declarations = "";
   let scripts = "";
+  let state: any = {};
   const eventHandlers: string[] = [];
 
   // Parse script tag
@@ -27,8 +28,21 @@ function compile(file: string) {
     const newImports: any = { ...ast, body: [] };
 
     for (let i = 0; i < ast.body.length; i++) {
-      const n = ast.body[i];
-      if (["VariableDeclaration", "FunctionDeclaration"].includes(n.type)) {
+      const n: any = ast.body[i];
+      if (
+        n.type === "VariableDeclaration" &&
+        n.declarations[0].id.name === "$state"
+      ) {
+        // Special case for $state declaration
+        state = Object.fromEntries(
+          n.declarations[0].init.properties.map((p: any) => [
+            p.key.name,
+            { value: p.value.value, subs: [] },
+          ]),
+        );
+      } else if (
+        ["VariableDeclaration", "FunctionDeclaration"].includes(n.type)
+      ) {
         // Pull out declarations
         newDeclarations.body.push(n);
       } else if (n.type === "ImportDeclaration") {
@@ -48,8 +62,39 @@ function compile(file: string) {
     for (let i = 0; i < parent.childNodes.length; i++) {
       const node = parent.childNodes[i];
 
-      // Handle replacing {var} with ${var}
+      // Handle $state subs (currently only works in text nodes lol)
       if (node.nodeName === "#text") {
+        const matches = node.value.match(/{(.+?)}/g);
+
+        if (matches) {
+          const id = "_" + randomBytes(4).toString("hex");
+          // TODO: this is dupe of below, refactor
+          const classAttr = node.parentNode.attrs.find(
+            (attr: any) => attr.name,
+          );
+          if (classAttr) {
+            classAttr.value += ` ${id}`;
+            classAttr.value = classAttr.value.trim();
+          } else {
+            node.parentNode.attrs.push({ name: "class", value: id });
+          }
+
+          for (let i = 0; i < matches.length; i++) {
+            const match = matches[i];
+            const key = match.slice("{$state.".length, -1);
+            if (state[key]) {
+              state[key].subs.push(
+                `function ${id}(value) { 
+                    document.querySelector('.${id}').textContent = \`${node.value
+                      .replace(match, "{value}")
+                      .replace(/{/g, "${")}\`;
+                }`,
+              );
+            }
+          }
+        }
+
+        // Handle replacing {var} with ${var}
         node.value = node.value.replace(
           /{(.+?)}/g,
           (_: any, p1: any) => `\${${p1}}`,
@@ -113,15 +158,24 @@ function compile(file: string) {
     allowBunRuntime: false,
   });
 
+  let strState = "{";
+  for (const key in state) {
+    strState += `"${key}": { value: ${JSON.stringify(state[key].value)}, subs: [
+        ${state[key].subs.join(",")}
+    ] },`;
+  }
+  strState += "}";
+
   return transpiler.transformSync(
     `${imports}
 export default function component(target, $props = {}) {
-        const $state = new Proxy({}, {
+        const $state = new Proxy(${strState}, {
             set: (t, key, value) => {
-                t[key] = value;
-                // TODO: Update the changed value in the DOM
+                t[key].value = value;
+                t[key].subs.forEach((fn) => fn(value));
                 return true;
-            }
+            },
+            get: (t, key) => t[key].value,
         });
         ${declarations}
         function $render() { return \`${html}\` };
